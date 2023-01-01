@@ -2,21 +2,20 @@ import { NextApiHandler } from 'next'
 import { query } from '@/lib/db'
 
 const handler: NextApiHandler = async (req, res) => {
-  const { id, title, content } = req.body
+  const { question, answer, repeats,  wrongs, category_id } = req.body
   try {
-    if (!id || !title || !content) {
+    if (!question || !answer) {
       return res
         .status(400)
-        .json({ message: '`id`,`title`, and `content` are all required' })
+        .json({ message: '`question` and `answer` are both required' })
     }
 
     const results = await query(
       `
-      UPDATE entries
-      SET title = ?, content = ?
-      WHERE id = ?
+      INSERT INTO words (question, answer, repeats,  wrongs, category_id)
+      VALUES (?, ?, ?, ?, ?)
       `,
-      [title, content, id]
+      [question, answer, repeats,  wrongs, category_id]
     )
 
     return res.json(results)
