@@ -4,7 +4,7 @@ import TextField from "@mui/material/TextField";
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 import React, {useEffect, useRef, useState} from "react";
 import useSWR from "swr";
-import {getRandomItem} from "@/common/utils/array.utils";
+import {getItemById, getRandomItem} from "@/common/utils/array.utils";
 import {styled} from "@mui/material/styles";
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -13,6 +13,8 @@ const fetcher = (url) => fetch(url).then((res) => res.json());
 import errorTrack from './sounds/error.ogg';
 // @ts-ignore
 import successTrack from './sounds/success.ogg';
+import {randomIntFromInterval} from "@/common/utils/number.utils";
+import axios from "axios";
 
 const CssTextField = styled(TextField)({
   '&.success .MuiOutlinedInput-root': {
@@ -79,7 +81,21 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
     setStatus(Status.PLAY);
     setUserAnswer('');
     setCountError(0);
-    setShowWord(getRandomItem(filteredData));
+
+    const random = randomIntFromInterval(1, 6);
+    if(random > 3) {
+      // Меняем местами вопрос с ответом
+      const word = {...getRandomItem(filteredData)};
+      const answer = word.answer;
+      word.answer = word.question;
+      word.question = answer;
+      setTimeout(() => {
+        setShowWord(word);
+      }, 500);
+    } else {
+      // Обычный режим
+      setShowWord({...getRandomItem(filteredData)});
+    }
   }
 
   // Данные загружены
@@ -103,12 +119,27 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
       setUserAnswer(inputLetters);
       setStatus(Status.SUCCESS);
       successPlayer.current.play();
-      // Если количество ошибок больше 1 не убираем повтор
+
+      // Если ошибок нет убираем повтор
+      const word = getItemById(data, showWord.id);
+      if(countError === 0) {
+        console.log(Number(word.repeats) - 1, 'repeats')
+        word.repeats = Number(word.repeats) - 1;
+      } else {
+        word.wrongs = Number(word.wrongs) + 1;
+      }
+      // Сохранение данных
+      axios.patch('/api/edit-word', {...word})
+      setTimeout(() => {
+        mutate([...data]);
+      }, 1000);
+
       // Сохраняем пример, переходим на следующий
       setTimeout(() => {
+        console.log(data, 'data');
         // Выбираем следующее слово
         selectWord();
-      }, 2000);
+      }, 1500);
     }
     // Пользователь вводит пока верно, без ошибок
     else if(answerLetters.indexOf(userLetters) === 0) {
