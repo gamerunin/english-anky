@@ -4,8 +4,8 @@ import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Typography from "@mui/material/Typography";
 import React from "react";
-import WordEdit from "@/components/words/components/word-edit/word-edit";
 import { useRouter } from 'next/router'
+import WordList from "@/components/words/components/word-list/word-list";
 
 const theme = createTheme();
 
@@ -25,9 +25,9 @@ const WordEditPage: React.FC = (): JSX.Element => {
 							}}
 					>
 						<Typography component="h1" variant="h4" sx={{ marginTop: '10px', marginBottom: '30px' }}>
-							Редактировать слово
+							Список слов
 						</Typography>
-						<WordEdit id={Number(id)} />
+						<WordList category={String(id)} />
 					</Box>
 				</Container>
 			</ThemeProvider>
