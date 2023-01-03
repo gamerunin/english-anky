@@ -4,8 +4,9 @@ import TextField from "@mui/material/TextField";
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 import React, {useEffect, useRef, useState} from "react";
 import useSWR from "swr";
-import {getItemById, getRandomItem} from "@/common/utils/array.utils";
+import {getItemById, getRandomItem, isArrayWitchLength} from "@/common/utils/array.utils";
 import {styled} from "@mui/material/styles";
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 // sounds
@@ -15,6 +16,10 @@ import errorTrack from './sounds/error.ogg';
 import successTrack from './sounds/success.ogg';
 import {randomIntFromInterval} from "@/common/utils/number.utils";
 import axios from "axios";
+import {IconButton} from "@mui/material";
+import TextToSpeech from "@/components/play/service/text-to-speech";
+import {useRouter} from "next/router";
+import useAxios from "@/common/hooks/useAxios";
 
 const CssTextField = styled(TextField)({
   '&.success .MuiOutlinedInput-root': {
@@ -58,11 +63,15 @@ interface PlayProps {
 }
 
 const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
-  const { data, error, isLoading, mutate } = useSWR(`/api/get-words?category=${category}&not_complete=true`, fetcher);
+  const { data } = useAxios({url: `/api/get-words?category=${category}&not_complete=true`, params: {}})
   const [userAnswer, setUserAnswer] = useState('');
-  const [status, setStatus] = useState(Status.PLAY);
+  const [playStatus, setPlayStatus] = useState(Status.PLAY);
   const [showWord, setShowWord] = useState(null);
   const [countError, setCountError] = useState(0);
+  const [isCanPlay, setCanPlay] = useState(false);
+  const router = useRouter();
+
+  console.log('render ', data);
 
   const errorPlayer = useRef<HTMLAudioElement | undefined>(
       typeof Audio !== "undefined" ? new Audio(errorTrack) : undefined
@@ -78,7 +87,7 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
     // Фильтруем те у которых есть повторы
     const filteredData = data.filter((word) => word.repeats > 0);
 
-    setStatus(Status.PLAY);
+    setPlayStatus(Status.PLAY);
     setUserAnswer('');
     setCountError(0);
 
@@ -98,14 +107,10 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
     }
   }
 
-  // Данные загружены
   useEffect(() => {
-    if(!(!isLoading && data && data.length > 0)) return;
-
-    // Выбираем первое слово
+    if(!isArrayWitchLength(data)) return;
     selectWord();
-  }, [isLoading])
-
+  }, [data]);
 
   // Получен ответ
   const onAnswer = (inputLetters: string) => {
@@ -113,50 +118,43 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
     const userLetters = inputLetters.toLowerCase();
     const answerLetters = showWord.answer.toLowerCase();
 
-
     // Ответ верный
     if(answerLetters === userLetters) {
       setUserAnswer(inputLetters);
-      setStatus(Status.SUCCESS);
+      setPlayStatus(Status.SUCCESS);
       successPlayer.current.play();
 
       // Если ошибок нет убираем повтор
-      const word = getItemById(data, showWord.id);
+      const word = {...getItemById(data, showWord.id)};
       if(countError === 0) {
-        console.log(Number(word.repeats) - 1, 'repeats')
         word.repeats = Number(word.repeats) - 1;
       } else {
         word.wrongs = Number(word.wrongs) + 1;
       }
       // Сохранение данных
       axios.patch('/api/edit-word', {...word})
-      setTimeout(() => {
-        mutate([...data]);
-      }, 1000);
 
-      // Сохраняем пример, переходим на следующий
+      // Переходим на следующий
       setTimeout(() => {
-        console.log(data, 'data');
         // Выбираем следующее слово
         selectWord();
-      }, 1500);
+      }, 2000);
     }
     // Пользователь вводит пока верно, без ошибок
     else if(answerLetters.indexOf(userLetters) === 0) {
-      setStatus(Status.PLAY);
+      setPlayStatus(Status.PLAY);
       // Даем вводить в поле дальше
       setUserAnswer(inputLetters);
     }
     // Пользователь ошибся
     else {
-      setStatus(Status.ERROR);
+      setPlayStatus(Status.ERROR);
       // Записываем количество ошибок
       setCountError((count) => count + 1);
       errorPlayer.current.play();
     }
   }
 
-  if(error || isLoading) return  null;
   if(!showWord) return null;
 
   return (
@@ -166,9 +164,10 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
         </Avatar>
         <Typography component="h1" variant="h4" sx={{ marginTop: '30px' }}>
           {showWord.question}
+          {isCanPlay && <IconButton sx={{marginLeft: '10px'}} aria-label="voice" size="small" onClick={() => TextToSpeech.play(showWord.question)}><VolumeUpIcon /></IconButton>}
         </Typography>
         <CssTextField
-            className={status === Status.SUCCESS ? 'success' : (status === Status.ERROR ? 'error' : '')}
+            className={playStatus === Status.SUCCESS ? 'success' : (playStatus === Status.ERROR ? 'error' : '')}
             sx={{ maxWidth: '50ch', marginTop: '30px', '& > input': {color: 'green'} }}
             hiddenLabel
             margin="normal"
@@ -182,12 +181,12 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
               onAnswer(e.target.value);
             }}
         />
-        {status === Status.ERROR && (
+        {playStatus === Status.ERROR && (
           <Typography component="span" variant="subtitle1" sx={{ color: 'red', marginTop: '20px' }}>
             {showWord.answer}
           </Typography>
         )}
-        {status === Status.SUCCESS && (
+        {playStatus === Status.SUCCESS && (
           <Typography component="span" variant="subtitle1" sx={{ color: 'green', marginTop: '20px' }}>
             Верно!
           </Typography>

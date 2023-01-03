@@ -24,7 +24,7 @@ const PlayPage: React.FC = (): JSX.Element => {
                 alignItems: 'center',
               }}
           >
-            <Play category={Number(categoryId)} />
+            {categoryId && <Play category={Number(categoryId)} />}
           </Box>
         </Container>
       </ThemeProvider>

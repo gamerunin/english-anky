@@ -2,7 +2,7 @@ import Container from "@mui/material/Container";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import CategoryList from "@/components/words/components/category-list/category-list";
+import CategoryList from "@/components/category-list/category-list";
 import {createTheme, ThemeProvider} from "@mui/material/styles";
 import React from "react";
 

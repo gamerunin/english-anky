@@ -16,24 +16,21 @@ const fetcher = (url) => fetch(url).then((res) => res.json());
 const theme = createTheme();
 
 const WordListPage: React.FC = (): JSX.Element => {
-	const router = useRouter();
-	const { id } = router.query;
-	const { data, mutate } = useSWR(`/api/get-category?id=${id}`, fetcher);
 	const [formTitle, setFormTitle] = useState('');
-	const [isEdit, setEdit] = useState(false);
+	const [isEdit, setEdit] = useState(true);
+	const [formId, setFormId] = useState('');
 
-	useEffect(() => {
-		if(data?.title) {
-			setFormTitle(data.title);
-		}
-	}, [data])
-
-	// Сохранение заголовка
+	// Создание категорий
 	const onSaveTitle = () => {
 		setEdit(false);
-		axios.patch('/api/edit-category', {id, title: formTitle}).catch(() => {
-			alert('Произошла ошибка сохранения');
-		})
+		axios.patch('/api/create-category', {title: formTitle})
+			.then((response) => {
+				setEdit(false);
+				setFormId(response?.data?.insertId);
+			})
+			.catch(() => {
+				alert('Произошла ошибка создания');
+			})
 	}
 
 	return (
@@ -47,10 +44,10 @@ const WordListPage: React.FC = (): JSX.Element => {
 								alignItems: 'center',
 							}}
 					>
-						{data &&
 							<>
 							{isEdit &&
-								<Box sx={{display: 'flex', marginTop: '20px', marginBottom: '30px'}}>
+								<Box sx={{display: 'flex', marginTop: '20px', marginBottom: '30px', alignItems: 'center'}}>
+									<Typography sx={{marginRight: '20px'}}>Создание категории: </Typography>
 									<TextField
 										hiddenLabel
 										size="small"
@@ -67,8 +64,7 @@ const WordListPage: React.FC = (): JSX.Element => {
 								</Typography>
 							}
 							</>
-						}
-						<WordList category={String(id)} />
+						{formId && <WordList category={String(formId)} />}
 					</Box>
 				</Container>
 			</ThemeProvider>

@@ -71,6 +71,13 @@ export function getRandomItem(array: any): any {
 }
 
 /**
+ * Массив не пустой
+ */
+export function isArrayWitchLength(array:any) {
+	return Array.isArray(array) && array.length > 0;
+}
+
+/**
  * Сортирует массивы методом sort() и возвращает первое неравенство.
  * @param arr1
  * @param arr2
