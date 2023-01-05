@@ -3,9 +3,3 @@
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/basic-features/typescript for more information.
-
-declare module NodeJS {
-	interface Process extends NodeJS.Process {
-		browser?: string
-	}
-}

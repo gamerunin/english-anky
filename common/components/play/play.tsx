@@ -3,11 +3,9 @@ import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 import React, {useEffect, useRef, useState} from "react";
-import useSWR from "swr";
 import {getItemById, getRandomItem, isArrayWitchLength} from "@/common/utils/array.utils";
 import {styled} from "@mui/material/styles";
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-const fetcher = (url) => fetch(url).then((res) => res.json());
 
 // sounds
 // @ts-ignore
@@ -71,8 +69,6 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
   const [isCanPlay, setCanPlay] = useState(false);
   const router = useRouter();
 
-  console.log('render ', data);
-
   const errorPlayer = useRef<HTMLAudioElement | undefined>(
       typeof Audio !== "undefined" ? new Audio(errorTrack) : undefined
   );
@@ -86,24 +82,41 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
     if(!data) return  null;
     // Фильтруем те у которых есть повторы
     const filteredData = data.filter((word) => word.repeats > 0);
+    // Все примеры закончились
+    if(filteredData.length < 1) {
+      router.push('/');
+      return;
+    }
 
     setPlayStatus(Status.PLAY);
     setUserAnswer('');
     setCountError(0);
 
     const random = randomIntFromInterval(1, 6);
-    if(random > 3) {
+    if(random > 4) {
       // Меняем местами вопрос с ответом
-      const word = {...getRandomItem(filteredData)};
-      const answer = word.answer;
-      word.answer = word.question;
+      const word    = {...getRandomItem(filteredData)};
+      const answer  = word.answer;
+      word.answer   = word.question;
       word.question = answer;
-      setTimeout(() => {
-        setShowWord(word);
-      }, 500);
+      word.play = '';
+      setCanPlay(false);
+      setShowWord(word);
+    } else if(random > 2) {
+      // только озвучка
+      const word = {...getRandomItem(filteredData)};
+      word.play = word.question;
+      TextToSpeech.play(word.play);
+      word.question = '******';
+      setCanPlay(true);
+      setShowWord(word);
     } else {
       // Обычный режим
-      setShowWord({...getRandomItem(filteredData)});
+      const word = {...getRandomItem(filteredData)};
+      word.play = word.question;
+      TextToSpeech.play(word.play);
+      setCanPlay(true);
+      setShowWord(word);
     }
   }
 
@@ -125,12 +138,13 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
       successPlayer.current.play();
 
       // Если ошибок нет убираем повтор
-      const word = {...getItemById(data, showWord.id)};
+      const word = getItemById(data, showWord.id);
       if(countError === 0) {
         word.repeats = Number(word.repeats) - 1;
       } else {
         word.wrongs = Number(word.wrongs) + 1;
       }
+      console.log(word.repeats, '3');
       // Сохранение данных
       axios.patch('/api/edit-word', {...word})
 
@@ -164,7 +178,7 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
         </Avatar>
         <Typography component="h1" variant="h4" sx={{ marginTop: '30px' }}>
           {showWord.question}
-          {isCanPlay && <IconButton sx={{marginLeft: '10px'}} aria-label="voice" size="small" onClick={() => TextToSpeech.play(showWord.question)}><VolumeUpIcon /></IconButton>}
+          {isCanPlay && <IconButton sx={{marginLeft: '10px'}} aria-label="voice" size="small" onClick={() => TextToSpeech.play(showWord.play)}><VolumeUpIcon /></IconButton>}
         </Typography>
         <CssTextField
             className={playStatus === Status.SUCCESS ? 'success' : (playStatus === Status.ERROR ? 'error' : '')}
