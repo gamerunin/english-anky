@@ -144,7 +144,6 @@ const Play: React.FC<PlayProps> = ({ category }): JSX.Element => {
       } else {
         word.wrongs = Number(word.wrongs) + 1;
       }
-      console.log(word.repeats, '3');
       // Сохранение данных
       axios.patch('/api/edit-word', {...word})
 
